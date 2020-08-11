@@ -60,6 +60,9 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         fname = QFileDialog.getOpenFileName(self, 'Open File', 'c\\', 'Image files (*.jpg, *.png)')
         self.reset_ball_pixel_positions()
         self.markers = []
+        self.image_points = None
+        self.road_points = None
+
         self.file_path = fname[0]
         self.image_name = fname[0].split("/")[-1]
         self.pixmap = QPixmap(self.file_path)
@@ -130,7 +133,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if len(self.tennis_balls) != 0:
             road_points = []
             image_points = []
-            with open(f'{self.image_name}.csv', 'w', newline='') as csvfile:
+            with open(f'./output_csv/{self.image_name}.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['x', 'y', 'row', 'column'])
                 for ball in self.tennis_balls:
