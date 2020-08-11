@@ -9,6 +9,7 @@ from tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
 import numpy as np
+import os
 
 
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
@@ -81,7 +82,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             height_diff = img_height - imgholder_height
         if img_width > imgholder_width:
             width_diff = img_width - imgholder_width
-        self.resize(self.width()+width_diff, self.height()+height_diff)
+        self.resize(self.width() + width_diff, self.height() + height_diff)
 
     def get_ball_pixel_position(self, event):
         self.clicked_x_pixel = event.pos().x()
@@ -98,10 +99,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if self.clicked_x_pixel and self.clicked_y_pixel:
             pen = QPen(Qt.green, 3)
             painter.setPen(pen)
-            painter.drawLine(self.clicked_x_pixel-10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y(),
-                             self.clicked_x_pixel+10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y())
-            painter.drawLine(self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel-10+self.image_holder.y(),
-                             self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel+10+self.image_holder.y())
+            painter.drawLine(self.clicked_x_pixel - 10 + self.image_holder.x(),
+                             self.clicked_y_pixel + self.image_holder.y(),
+                             self.clicked_x_pixel + 10 + self.image_holder.x(),
+                             self.clicked_y_pixel + self.image_holder.y())
+            painter.drawLine(self.clicked_x_pixel + self.image_holder.x(),
+                             self.clicked_y_pixel - 10 + self.image_holder.y(),
+                             self.clicked_x_pixel + self.image_holder.x(),
+                             self.clicked_y_pixel + 10 + self.image_holder.y())
 
         if self.markers:
             pen = QPen(Qt.green, 3)
@@ -116,10 +121,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.tennis_balls[(row, column)] = tennis_ball
             tennis_ball.to_string()
             button.set_button_selected_status()
-            line_1 = QLine(self.clicked_x_pixel-10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y(),
-                             self.clicked_x_pixel+10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y())
-            line_2 = QLine(self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel-10+self.image_holder.y(),
-                             self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel+10+self.image_holder.y())
+            line_1 = QLine(self.clicked_x_pixel - 10 + self.image_holder.x(),
+                           self.clicked_y_pixel + self.image_holder.y(),
+                           self.clicked_x_pixel + 10 + self.image_holder.x(),
+                           self.clicked_y_pixel + self.image_holder.y())
+            line_2 = QLine(self.clicked_x_pixel + self.image_holder.x(),
+                           self.clicked_y_pixel - 10 + self.image_holder.y(),
+                           self.clicked_x_pixel + self.image_holder.x(),
+                           self.clicked_y_pixel + 10 + self.image_holder.y())
             self.markers.append(line_1)
             self.markers.append(line_2)
             self.reset_ball_pixel_positions()
@@ -133,14 +142,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if len(self.tennis_balls) != 0:
             road_points = []
             image_points = []
-            with open(f'./output_csv/{self.image_name}.csv', 'w', newline='') as csvfile:
+            with open(f'output_csv/{self.image_name}.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['x', 'y', 'row', 'column'])
                 for ball in self.tennis_balls:
                     writer.writerow([self.tennis_balls[ball].x, self.tennis_balls[ball].y,
-                                     self.tennis_balls[ball].c*self.unit, self.tennis_balls[ball].r*self.unit])
+                                     self.tennis_balls[ball].c * self.unit, self.tennis_balls[ball].r * self.unit])
 
-                    road_points.append([self.tennis_balls[ball].c*self.unit, self.tennis_balls[ball].r*self.unit])
+                    road_points.append([self.tennis_balls[ball].c * self.unit, self.tennis_balls[ball].r * self.unit])
                     image_points.append([self.tennis_balls[ball].x, self.tennis_balls[ball].y])
 
                 csvfile.close()
