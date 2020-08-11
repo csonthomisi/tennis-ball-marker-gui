@@ -1,5 +1,5 @@
-from PySide2.QtCore import QRect
-from PySide2.QtGui import QPixmap, Qt, QPainter, QBrush, QColor
+from PySide2.QtCore import QRect, QLine
+from PySide2.QtGui import QPixmap, Qt, QPainter, QBrush, QColor, QPen
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
 from assign_button import AssignButton
@@ -62,7 +62,6 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.markers = []
         self.file_path = fname[0]
         self.image_name = fname[0].split("/")[-1]
-        print(self.image_name)
         self.pixmap = QPixmap(self.file_path)
         self.image_holder.setText("")
         self.update()
@@ -94,16 +93,17 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                                      self.image_holder.width(), self.image_holder.height()), self.pixmap)
 
         if self.clicked_x_pixel and self.clicked_y_pixel:
-            brush = QBrush(QColor(200, 0, 0))
-            painter.setBrush(brush)
-            painter.drawRect(self.image_holder.x() + self.clicked_x_pixel - 10,
-                             self.image_holder.y() + self.clicked_y_pixel - 10,
-                             20, 20)
+            pen = QPen(Qt.green, 3)
+            painter.setPen(pen)
+            painter.drawLine(self.clicked_x_pixel-10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y(),
+                             self.clicked_x_pixel+10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y())
+            painter.drawLine(self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel-10+self.image_holder.y(),
+                             self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel+10+self.image_holder.y())
 
         if self.markers:
-            brush = QBrush(QColor(200, 0, 0))
-            painter.setBrush(brush)
-            painter.drawRects(self.markers)
+            pen = QPen(Qt.green, 3)
+            painter.setPen(pen)
+            painter.drawLines(self.markers)
 
     def set_ball_coord_position(self):
         button = self.sender()
@@ -113,10 +113,12 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.tennis_balls[(row, column)] = tennis_ball
             tennis_ball.to_string()
             button.set_button_selected_status()
-            marker = QRect(self.image_holder.x()+self.clicked_x_pixel-10,
-                           self.image_holder.y()+self.clicked_y_pixel-10,
-                           20, 20)
-            self.markers.append(marker)
+            line_1 = QLine(self.clicked_x_pixel-10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y(),
+                             self.clicked_x_pixel+10+self.image_holder.x(), self.clicked_y_pixel+self.image_holder.y())
+            line_2 = QLine(self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel-10+self.image_holder.y(),
+                             self.clicked_x_pixel+self.image_holder.x(), self.clicked_y_pixel+10+self.image_holder.y())
+            self.markers.append(line_1)
+            self.markers.append(line_2)
             self.reset_ball_pixel_positions()
             self.update()
 
@@ -133,15 +135,15 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 writer.writerow(['x', 'y', 'row', 'column'])
                 for ball in self.tennis_balls:
                     writer.writerow([self.tennis_balls[ball].x, self.tennis_balls[ball].y,
-                                     self.tennis_balls[ball].r, self.tennis_balls[ball].c])
+                                     self.tennis_balls[ball].c*self.unit, self.tennis_balls[ball].r*self.unit])
 
                     road_points.append([self.tennis_balls[ball].c*self.unit, self.tennis_balls[ball].r*self.unit])
                     image_points.append([self.tennis_balls[ball].x, self.tennis_balls[ball].y])
 
                 csvfile.close()
             print("saved")
-            self.image_points = np.array(image_points)
-            self.road_points = np.array(road_points)
+            self.image_points = np.array([image_points])
+            self.road_points = np.array([road_points])
 
     def edit_ball_position(self):
         if self.tennis_balls:
