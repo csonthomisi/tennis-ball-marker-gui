@@ -1,5 +1,5 @@
 from PySide2.QtCore import QRect
-from PySide2.QtGui import QPixmap, Qt, QPainter, QPen, QBrush, QColor
+from PySide2.QtGui import QPixmap, Qt, QPainter, QBrush, QColor
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
 from assign_button import AssignButton
@@ -32,6 +32,11 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.save_btn.clicked.connect(self.save_balls)
         self.image_holder.mousePressEvent = self.get_ball_pixel_position
 
+        self.image_points = None
+        self.road_points = None
+        self.unit = 1.5
+        self.image_name = ""
+
     def add_buttons(self):
         for i in range(0, 5):
             for j in range(0, 5):
@@ -56,6 +61,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.reset_ball_pixel_positions()
         self.markers = []
         self.file_path = fname[0]
+        self.image_name = fname[0].split("/")[-1]
+        print(self.image_name)
         self.pixmap = QPixmap(self.file_path)
         self.image_holder.setText("")
         self.update()
@@ -119,14 +126,22 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
-            with open('output.csv', 'w', newline='') as csvfile:
+            road_points = []
+            image_points = []
+            with open(f'{self.image_name}.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['x', 'y', 'row', 'column'])
                 for ball in self.tennis_balls:
                     writer.writerow([self.tennis_balls[ball].x, self.tennis_balls[ball].y,
                                      self.tennis_balls[ball].r, self.tennis_balls[ball].c])
+
+                    road_points.append([self.tennis_balls[ball].c*self.unit, self.tennis_balls[ball].r*self.unit])
+                    image_points.append([self.tennis_balls[ball].x, self.tennis_balls[ball].y])
+
                 csvfile.close()
-        print("saved")
+            print("saved")
+            self.image_points = np.array(image_points)
+            self.road_points = np.array(road_points)
 
     def edit_ball_position(self):
         if self.tennis_balls:
@@ -145,6 +160,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     def calculate_homography(self):
         print("calculate_homography")
+        print(self.road_points)
+        print(self.image_points)
 
 
 app = QApplication()
