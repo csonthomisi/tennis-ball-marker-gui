@@ -1,4 +1,4 @@
-from PySide2.QtCore import QRect, QLine
+from PySide2.QtCore import QRect
 from PySide2.QtGui import QPixmap, Qt, QPainter, QPen
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
@@ -17,20 +17,19 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.widget = QWidget()
         self.vbox = QVBoxLayout()
-        self.clicked_x_pixel = None
-        self.clicked_y_pixel = None
-        self.file_path = None
-        self.pixmap = None
-        self.update_markers = False
-        self.update_image = False
         self.edit_dialog = EditPositionGUI()
-        self.tennis_balls = {}
         self.add_buttons()
         self.select_image_btn.clicked.connect(self.browse_image)
         self.calc_homography_btn.clicked.connect(self.calculate_homography)
         self.save_btn.clicked.connect(self.save_balls)
         self.image_holder.mousePressEvent = self.get_ball_pixel_position
 
+        self.clicked_x_pixel = None
+        self.clicked_y_pixel = None
+        self.file_path = None
+        self.pixmap = None
+        self.tennis_balls = {}
+        self.buttons_list = []
         self.image_points = None
         self.road_points = None
         self.unit = 1.5
@@ -57,16 +56,26 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     def browse_image(self):
         fname = QFileDialog.getOpenFileName(self, 'Open File', 'c\\', 'Image files (*.jpg, *.png)')
-        self.reset_ball_pixel_positions()
+        if fname[0]:
+            self.change_image_reset()
+            self.file_path = fname[0]
+            self.image_name = fname[0].split("/")[-1]
+            self.pixmap = QPixmap(self.file_path)
+            self.image_holder.setText("")
+            self.update()
+
+    def change_image_reset(self):
         self.image_points = None
         self.road_points = None
         self.tennis_balls = {}
+        self.reset_buttons_list()
+        self.reset_ball_pixel_positions()
 
-        self.file_path = fname[0]
-        self.image_name = fname[0].split("/")[-1]
-        self.pixmap = QPixmap(self.file_path)
-        self.image_holder.setText("")
-        self.update()
+    def reset_buttons_list(self):
+        if self.buttons_list:
+            for btn in self.buttons_list:
+                btn.reset_button_status()
+        self.buttons_list = []
 
     def resize_widgets(self):
         imgholder_height = self.image_holder.height()
@@ -83,9 +92,10 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.resize(self.width() + width_diff, self.height() + height_diff)
 
     def get_ball_pixel_position(self, event):
-        self.clicked_x_pixel = event.pos().x()
-        self.clicked_y_pixel = event.pos().y()
-        self.update()
+        if self.image_name:
+            self.clicked_x_pixel = event.pos().x()
+            self.clicked_y_pixel = event.pos().y()
+            self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -97,8 +107,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if self.clicked_x_pixel and self.clicked_y_pixel:
             pen = QPen(Qt.green, 3)
             painter.setPen(pen)
-            self.draw_marker(painter,
-                             self.clicked_x_pixel+self.image_holder.x(),
+            self.draw_marker(painter, self.clicked_x_pixel+self.image_holder.x(),
                              self.clicked_y_pixel+self.image_holder.y())
 
         if self.tennis_balls:
@@ -109,14 +118,17 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 y = self.tennis_balls[ball].y
                 self.draw_marker(painter, x+self.image_holder.x(), y+self.image_holder.y())
 
-    def draw_marker(self, painter, x, y):
+    @staticmethod
+    def draw_marker(painter, x, y):
         painter.drawLine(x-10, y, x+10, y)
         painter.drawLine(x, y-10, x, y+10)
 
     def set_ball_coord_position(self):
-        button = self.sender()
-        row, column = button.get_row_column()
         if self.clicked_y_pixel and self.clicked_x_pixel:
+            button = self.sender()
+            self.buttons_list.append(button)
+            row, column = button.get_row_column()
+
             tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
             self.tennis_balls[(row, column)] = tennis_ball
             tennis_ball.to_string()
@@ -136,11 +148,13 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 writer = csv.writer(csvfile)
                 writer.writerow(['x', 'y', 'row', 'column'])
                 for ball in self.tennis_balls:
-                    writer.writerow([self.tennis_balls[ball].x, self.tennis_balls[ball].y,
-                                     self.tennis_balls[ball].c * self.unit, self.tennis_balls[ball].r * self.unit])
-
-                    road_points.append([self.tennis_balls[ball].c * self.unit, self.tennis_balls[ball].r * self.unit])
-                    image_points.append([self.tennis_balls[ball].x, self.tennis_balls[ball].y])
+                    x = self.tennis_balls[ball].x
+                    y = self.tennis_balls[ball].y
+                    c = self.tennis_balls[ball].c * self.unit
+                    r = self.tennis_balls[ball].r * self.unit
+                    writer.writerow([x, y, c, r])
+                    road_points.append([c, r])
+                    image_points.append([x, y])
 
                 csvfile.close()
             print("saved")
@@ -163,9 +177,10 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 return
 
     def calculate_homography(self):
-        print("calculate_homography")
-        print(self.road_points)
-        print(self.image_points)
+        if self.road_points is not None and self.image_points is not None:
+            print("calculate_homography")
+            print(self.road_points)
+            print(self.image_points)
 
 
 app = QApplication()
