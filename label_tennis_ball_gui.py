@@ -183,7 +183,12 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             print(self.image_points)
 
 
-app = QApplication()
-window = LabelTennisBallGUI()
-window.show()
-app.exec_()
+def main():
+    app = QApplication()
+    window = LabelTennisBallGUI()
+    window.show()
+    app.exec_()
+
+
+if __name__ == "__main__":
+    main()
