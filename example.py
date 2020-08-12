@@ -1,7 +1,7 @@
 import sys
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
-from PySide2.QtCore import *
+from PySide2.QtCore import QRect
+from PySide2.QtGui import QPainter, QPixmap, QPen, Qt
+from PySide2.QtWidgets import QWidget, QApplication
 
 
 class Example(QWidget):
