@@ -11,3 +11,6 @@ class AssignButton(QPushButton):
 
     def set_button_selected_status(self):
         self.setStyleSheet("background-color: green")
+
+    def reset_button_status(self):
+        self.setStyleSheet("background-color: light gray")
