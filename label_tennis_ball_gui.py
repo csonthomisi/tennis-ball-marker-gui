@@ -21,7 +21,6 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.add_buttons()
         self.select_image_btn.clicked.connect(self.browse_image)
         self.calc_homography_btn.clicked.connect(self.calculate_homography)
-        self.save_btn.clicked.connect(self.save_balls)
         self.image_holder.mousePressEvent = self.get_ball_pixel_position
 
         self.clicked_x_pixel = None
@@ -32,7 +31,6 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.buttons_list = []
         self.image_points = None
         self.road_points = None
-        self.unit = 1.5
         self.image_name = ""
 
     def add_buttons(self):
@@ -150,8 +148,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 for ball in self.tennis_balls:
                     x = self.tennis_balls[ball].x
                     y = self.tennis_balls[ball].y
-                    c = self.tennis_balls[ball].c * self.unit
-                    r = self.tennis_balls[ball].r * self.unit
+                    c = self.tennis_balls[ball].c * self.road_unit.value()
+                    r = self.tennis_balls[ball].r * self.road_unit.value()
                     writer.writerow([x, y, c, r])
                     road_points.append([c, r])
                     image_points.append([x, y])
@@ -177,6 +175,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 return
 
     def calculate_homography(self):
+        self.save_balls()
         if self.road_points is not None and self.image_points is not None:
             print("calculate_homography")
             print(self.road_points)
