@@ -53,7 +53,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.scrollArea.setWidget(self.widget)
 
     def browse_image(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open File', 'c\\', 'Image files (*.jpg, *.png)')
+        fname = QFileDialog.getOpenFileName(self, 'Open File', 'c\\')
         if fname[0]:
             self.change_image_reset()
             self.file_path = fname[0]
