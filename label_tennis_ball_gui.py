@@ -98,7 +98,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.estimate_center()
 
     def estimate_center(self):
-        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=5)
+        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=4)
         img.region_grow()
         self.clicked_x_pixel, self.clicked_y_pixel = img.estimate_center()
         print(f"Estimated center: {self.clicked_x_pixel}, {self.clicked_y_pixel}")
