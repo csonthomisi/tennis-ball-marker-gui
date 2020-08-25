@@ -5,6 +5,7 @@ from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayou
 from assign_button import AssignButton
 from edit_button import EditButton
 from edit_position_gui import EditPositionGUI
+from region_growing import RegionGrowing
 from tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
@@ -94,6 +95,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.clicked_x_pixel = event.pos().x()
             self.clicked_y_pixel = event.pos().y()
             self.update()
+            self.estimate_center()
+
+    def estimate_center(self):
+        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=4)
+        img.region_grow()
+        self.clicked_x_pixel, self.clicked_y_pixel = img.estimate_center()
+        print(f"Estimated center: {self.clicked_x_pixel}, {self.clicked_y_pixel}")
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -103,13 +112,13 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                                      self.image_holder.width(), self.image_holder.height()), self.pixmap)
 
         if self.clicked_x_pixel and self.clicked_y_pixel:
-            pen = QPen(Qt.green, 3)
+            pen = QPen(Qt.green, 1.5)
             painter.setPen(pen)
             self.draw_marker(painter, self.clicked_x_pixel+self.image_holder.x(),
                              self.clicked_y_pixel+self.image_holder.y())
 
         if self.tennis_balls:
-            pen = QPen(Qt.green, 3)
+            pen = QPen(Qt.green, 1.5)
             painter.setPen(pen)
             for ball in self.tennis_balls:
                 x = self.tennis_balls[ball].x
@@ -118,8 +127,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     @staticmethod
     def draw_marker(painter, x, y):
-        painter.drawLine(x-10, y, x+10, y)
-        painter.drawLine(x, y-10, x, y+10)
+        painter.drawLine(x-5, y, x+5, y)
+        painter.drawLine(x, y-5, x, y+5)
 
     def set_ball_coord_position(self):
         if self.clicked_y_pixel and self.clicked_x_pixel:
