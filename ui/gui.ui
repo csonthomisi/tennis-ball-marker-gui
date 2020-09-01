@@ -63,25 +63,6 @@
      <string>Calculate Homography</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="select_image_btn">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>580</y>
-      <width>280</width>
-      <height>30</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="text">
-     <string>Browse an Image</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="image_holder">
     <property name="enabled">
      <bool>true</bool>
@@ -119,7 +100,7 @@
       <x>10</x>
       <y>10</y>
       <width>280</width>
-      <height>560</height>
+      <height>520</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -143,7 +124,7 @@
        <x>0</x>
        <y>0</y>
        <width>278</width>
-       <height>558</height>
+       <height>518</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -202,6 +183,38 @@
     </property>
     <property name="value">
      <double>1.000000000000000</double>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="zoom_image">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>580</y>
+      <width>280</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Zoom</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="select_image_btn">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>540</y>
+      <width>280</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="text">
+     <string>Browse an Image</string>
     </property>
    </widget>
   </widget>

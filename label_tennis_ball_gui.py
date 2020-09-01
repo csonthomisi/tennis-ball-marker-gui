@@ -10,6 +10,7 @@ from tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
 import numpy as np
+from zoom_image import ZoomImage
 
 
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
@@ -23,6 +24,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.select_image_btn.clicked.connect(self.browse_image)
         self.calc_homography_btn.clicked.connect(self.calculate_homography)
         self.image_holder.mousePressEvent = self.get_ball_pixel_position
+        self.zoom_image.clicked.connect(self.zoom_image_fn)
 
         self.clicked_x_pixel = None
         self.clicked_y_pixel = None
@@ -33,6 +35,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.image_points = None
         self.road_points = None
         self.image_name = ""
+        self.zoom_img = ZoomImage(self)
 
     def add_buttons(self):
         for i in range(0, 5):
@@ -146,6 +149,15 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
     def reset_ball_pixel_positions(self):
         self.clicked_x_pixel = None
         self.clicked_y_pixel = None
+
+    def zoom_image_fn(self):
+        if self.file_path:
+            self.zoom_img.show()
+            self.zoom_img.setImagePath(self.file_path)
+
+    def set_x_y(self, x, y):
+        self.clicked_x_pixel, self.clicked_y_pixel = x, y
+        self.estimate_center()
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
