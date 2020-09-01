@@ -198,9 +198,16 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
     def calculate_homography(self):
         self.save_balls()
         if self.road_points is not None and self.image_points is not None:
-            print("calculate_homography")
-            print(self.road_points)
-            print(self.image_points)
+            if self.imu.isChecked():
+                print("IMU calculate_homography")
+                print(self.road_points)
+                print(self.image_points)
+            elif self.utm.isChecked():
+                print("UTM calculate_homography")
+                print(self.road_points)
+                print(self.image_points)
+            else:
+                pass
 
 
 def main():

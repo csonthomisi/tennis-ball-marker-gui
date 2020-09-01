@@ -49,7 +49,7 @@
      <rect>
       <x>10</x>
       <y>660</y>
-      <width>280</width>
+      <width>150</width>
       <height>30</height>
      </rect>
     </property>
@@ -215,6 +215,32 @@
     </property>
     <property name="text">
      <string>Browse an Image</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="imu">
+    <property name="geometry">
+     <rect>
+      <x>180</x>
+      <y>660</y>
+      <width>50</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>IMU</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="utm">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>660</y>
+      <width>50</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>UTM</string>
     </property>
    </widget>
   </widget>

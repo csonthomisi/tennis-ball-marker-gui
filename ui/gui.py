@@ -38,7 +38,7 @@ class Ui_MainWindow(object):
         self.calc_homography_btn = QPushButton(self.centralwidget)
         self.calc_homography_btn.setObjectName(u"calc_homography_btn")
         self.calc_homography_btn.setEnabled(True)
-        self.calc_homography_btn.setGeometry(QRect(10, 660, 280, 30))
+        self.calc_homography_btn.setGeometry(QRect(10, 660, 150, 30))
         sizePolicy.setHeightForWidth(self.calc_homography_btn.sizePolicy().hasHeightForWidth())
         self.calc_homography_btn.setSizePolicy(sizePolicy)
         self.image_holder = QLabel(self.centralwidget)
@@ -85,6 +85,12 @@ class Ui_MainWindow(object):
         self.select_image_btn.setGeometry(QRect(10, 540, 280, 30))
         sizePolicy.setHeightForWidth(self.select_image_btn.sizePolicy().hasHeightForWidth())
         self.select_image_btn.setSizePolicy(sizePolicy)
+        self.imu = QCheckBox(self.centralwidget)
+        self.imu.setObjectName(u"imu")
+        self.imu.setGeometry(QRect(180, 660, 50, 30))
+        self.utm = QCheckBox(self.centralwidget)
+        self.utm.setObjectName(u"utm")
+        self.utm.setGeometry(QRect(240, 660, 50, 30))
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -99,5 +105,7 @@ class Ui_MainWindow(object):
         self.lineEdit.setText(QCoreApplication.translate("MainWindow", u"Road Unit", None))
         self.zoom_image.setText(QCoreApplication.translate("MainWindow", u"Zoom", None))
         self.select_image_btn.setText(QCoreApplication.translate("MainWindow", u"Browse an Image", None))
+        self.imu.setText(QCoreApplication.translate("MainWindow", u"IMU", None))
+        self.utm.setText(QCoreApplication.translate("MainWindow", u"UTM", None))
     # retranslateUi
 
