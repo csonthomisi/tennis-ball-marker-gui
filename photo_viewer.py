@@ -1,4 +1,5 @@
 from PySide2 import QtWidgets, QtCore, QtGui
+from PySide2.QtGui import QPainter, QPen, Qt, QTransform
 
 
 class PhotoViewer(QtWidgets.QGraphicsView):
@@ -69,6 +70,18 @@ class PhotoViewer(QtWidgets.QGraphicsView):
             self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
         elif not self._photo.pixmap().isNull():
             self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+
+    def add_marker(self, x, y):
+        painter = QPainter(self)
+        pen = QPen(Qt.green, 1.5)
+        painter.setPen(pen)
+        self._scene.addLine(x-5, y, x+5, y, pen)
+        self._scene.addLine(x, y-5, x, y+5, pen)
+
+    def remove_marker(self, x, y):
+        transform = QTransform()
+        self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
+        self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
 
     def mousePressEvent(self, event):
         if self._photo.isUnderMouse():

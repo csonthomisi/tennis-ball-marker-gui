@@ -1,16 +1,16 @@
-from PySide2.QtCore import QRect
-from PySide2.QtGui import QPixmap, Qt, QPainter, QPen
+from PySide2 import QtWidgets
+from PySide2.QtGui import QPixmap, Qt
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
 from assign_button import AssignButton
 from edit_button import EditButton
 from edit_position_gui import EditPositionGUI
+from photo_viewer import PhotoViewer
 from region_growing import RegionGrowing
 from tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
 import numpy as np
-from zoom_image import ZoomImage
 
 
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
@@ -23,11 +23,25 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.add_buttons()
         self.select_image_btn.clicked.connect(self.browse_image)
         self.calc_homography_btn.clicked.connect(self.calculate_homography)
-        self.image_holder.mousePressEvent = self.get_ball_pixel_position
-        self.zoom_image.clicked.connect(self.zoom_image_fn)
+
+        self.viewer = PhotoViewer(self)
+        self.btn_pix_info = QtWidgets.QToolButton(self)
+        self.btn_pix_info.setText('Enter pixel info mode')
+        self.btn_pix_info.clicked.connect(self.pix_info)
+        self.edit_pix_info = QtWidgets.QLineEdit(self)
+        self.edit_pix_info.setReadOnly(True)
+        self.viewer.photoClicked.connect(self.get_ball_pixel_position)
+        self.image_holder.addWidget(self.viewer)
+        hblayout = QtWidgets.QHBoxLayout()
+        hblayout.setAlignment(Qt.AlignLeft)
+        hblayout.addWidget(self.btn_pix_info)
+        hblayout.addWidget(self.edit_pix_info)
+        self.image_holder.addLayout(hblayout)
 
         self.clicked_x_pixel = None
         self.clicked_y_pixel = None
+        self.temp_x_pixel = None
+        self.temp_y_pixel = None
         self.file_path = None
         self.pixmap = None
         self.tennis_balls = {}
@@ -35,7 +49,6 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.image_points = None
         self.road_points = None
         self.image_name = ""
-        self.zoom_img = ZoomImage(self)
 
     def add_buttons(self):
         for i in range(0, 5):
@@ -62,16 +75,50 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.change_image_reset()
             self.file_path = fname[0]
             self.image_name = fname[0].split("/")[-1]
-            self.pixmap = QPixmap(self.file_path)
-            self.image_holder.setText("")
-            self.update()
+            self.load_image()
 
     def change_image_reset(self):
         self.image_points = None
         self.road_points = None
+        self.delete_markers()
         self.tennis_balls = {}
         self.reset_buttons_list()
         self.reset_ball_pixel_positions()
+
+    def load_image(self):
+        self.viewer.setPhoto(QPixmap(self.file_path))
+
+    def pix_info(self):
+        self.viewer.toggleDragMode()
+
+    def get_ball_pixel_position(self, event):
+        if self.viewer.dragMode() == QtWidgets.QGraphicsView.NoDrag:
+            if self.image_name:
+                self.clicked_x_pixel = event.x()
+                self.clicked_y_pixel = event.y()
+                self.estimate_center()
+
+    def estimate_center(self):
+        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=5)
+        img.region_grow()
+        self.clicked_x_pixel, self.clicked_y_pixel = img.estimate_center()
+        self.edit_pix_info.setText(f"Estimated center: {self.clicked_x_pixel}, {self.clicked_y_pixel}")
+        if self.temp_x_pixel and self.temp_y_pixel:
+            self.viewer.remove_marker(self.temp_x_pixel, self.temp_y_pixel)
+        self.viewer.add_marker(self.clicked_x_pixel, self.clicked_y_pixel)
+        self.temp_x_pixel, self.temp_y_pixel = self.clicked_x_pixel, self.clicked_y_pixel
+
+    def set_ball_coord_position(self):
+        if self.clicked_y_pixel and self.clicked_x_pixel:
+            button = self.sender()
+            row, column = button.get_row_column()
+            if not (row, column) in self.tennis_balls:
+                self.buttons_list.append(button)
+                tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
+                self.tennis_balls[(row, column)] = tennis_ball
+                tennis_ball.to_string()
+                button.set_button_selected_status()
+                self.reset_ball_pixel_positions()
 
     def reset_buttons_list(self):
         if self.buttons_list:
@@ -79,85 +126,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 btn.reset_button_status()
         self.buttons_list = []
 
-    def resize_widgets(self):
-        imgholder_height = self.image_holder.height()
-        imgholder_width = self.image_holder.width()
-        self.image_holder.resize(self.pixmap.width(), self.pixmap.height())
-        img_height = self.pixmap.height()
-        img_width = self.pixmap.width()
-        height_diff = 0
-        width_diff = 0
-        if img_height > imgholder_height:
-            height_diff = img_height - imgholder_height
-        if img_width > imgholder_width:
-            width_diff = img_width - imgholder_width
-        self.resize(self.width() + width_diff, self.height() + height_diff)
-
-    def get_ball_pixel_position(self, event):
-        if self.image_name:
-            self.clicked_x_pixel = event.pos().x()
-            self.clicked_y_pixel = event.pos().y()
-            self.update()
-            self.estimate_center()
-
-    def estimate_center(self):
-        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=4)
-        img.region_grow()
-        self.clicked_x_pixel, self.clicked_y_pixel = img.estimate_center()
-        print(f"Estimated center: {self.clicked_x_pixel}, {self.clicked_y_pixel}")
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        if self.file_path:
-            self.resize_widgets()
-            painter.drawPixmap(QRect(self.image_holder.x(), self.image_holder.y(),
-                                     self.image_holder.width(), self.image_holder.height()), self.pixmap)
-
-        if self.clicked_x_pixel and self.clicked_y_pixel:
-            pen = QPen(Qt.green, 1.5)
-            painter.setPen(pen)
-            self.draw_marker(painter, self.clicked_x_pixel+self.image_holder.x(),
-                             self.clicked_y_pixel+self.image_holder.y())
-
-        if self.tennis_balls:
-            pen = QPen(Qt.green, 1.5)
-            painter.setPen(pen)
-            for ball in self.tennis_balls:
-                x = self.tennis_balls[ball].x
-                y = self.tennis_balls[ball].y
-                self.draw_marker(painter, x+self.image_holder.x(), y+self.image_holder.y())
-
-    @staticmethod
-    def draw_marker(painter, x, y):
-        painter.drawLine(x-5, y, x+5, y)
-        painter.drawLine(x, y-5, x, y+5)
-
-    def set_ball_coord_position(self):
-        if self.clicked_y_pixel and self.clicked_x_pixel:
-            button = self.sender()
-            self.buttons_list.append(button)
-            row, column = button.get_row_column()
-
-            tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
-            self.tennis_balls[(row, column)] = tennis_ball
-            tennis_ball.to_string()
-            button.set_button_selected_status()
-            self.reset_ball_pixel_positions()
-            self.update()
-
     def reset_ball_pixel_positions(self):
-        self.clicked_x_pixel = None
-        self.clicked_y_pixel = None
+        self.clicked_x_pixel, self.clicked_y_pixel = None, None
+        self.temp_x_pixel, self.temp_y_pixel = None, None
 
-    def zoom_image_fn(self):
-        if self.file_path:
-            self.zoom_img.show()
-            self.zoom_img.setImagePath(self.file_path)
-
-    def set_x_y(self, x, y):
-        self.clicked_x_pixel, self.clicked_y_pixel = x, y
-        self.estimate_center()
+    def delete_markers(self):
+        if self.tennis_balls:
+            for key in self.tennis_balls:
+                self.viewer.remove_marker(self.tennis_balls[key].x, self.tennis_balls[key].y)
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
@@ -190,6 +166,9 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 self.edit_dialog.show()
                 self.edit_dialog.exec_()
                 n_x, n_y = self.edit_dialog.get_x_y()
+                p_x, p_y = self.edit_dialog.get_prev_x_y()
+                self.viewer.remove_marker(p_x, p_y)
+                self.viewer.add_marker(n_x, n_y)
                 self.tennis_balls[(r, c)].set_x_y(n_x, n_y)
             else:
                 print("key not found")
