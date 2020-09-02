@@ -72,9 +72,7 @@ class PhotoViewer(QtWidgets.QGraphicsView):
             self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 
     def add_marker(self, x, y):
-        painter = QPainter(self)
         pen = QPen(Qt.green, 1.5)
-        painter.setPen(pen)
         self._scene.addLine(x-5, y, x+5, y, pen)
         self._scene.addLine(x, y-5, x, y+5, pen)
 
