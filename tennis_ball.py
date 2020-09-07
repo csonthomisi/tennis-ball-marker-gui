@@ -10,4 +10,4 @@ class TennisBall:
         self.y = y
 
     def to_string(self):
-        print(f"row={self.r}, column={self.c}, x={self.x}, y={self.y}")
+        return f"row={self.r}, column={self.c}, x={self.x}, y={self.y}"
