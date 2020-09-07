@@ -2,12 +2,12 @@ from PySide2 import QtWidgets
 from PySide2.QtGui import QPixmap, Qt
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
-from assign_button import AssignButton
-from edit_button import EditButton
-from edit_position_gui import EditPositionGUI
-from photo_viewer import PhotoViewer
-from region_growing import RegionGrowing
-from tennis_ball import TennisBall
+from ui_components.assign_button import AssignButton
+from ui_components.edit_button import EditButton
+from ui_components.edit_position_gui import EditPositionGUI
+from ui_components.photo_viewer import PhotoViewer
+from region_growing.region_growing import RegionGrowing
+from components.tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
 import numpy as np
