@@ -116,7 +116,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 self.buttons_list.append(button)
                 tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
                 self.tennis_balls[(row, column)] = tennis_ball
-                tennis_ball.to_string()
+                self.edit_pix_info.setText(tennis_ball.to_string())
                 button.set_button_selected_status()
                 self.reset_ball_pixel_positions()
 
@@ -134,6 +134,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if self.tennis_balls:
             for key in self.tennis_balls:
                 self.viewer.remove_marker(self.tennis_balls[key].x, self.tennis_balls[key].y)
+        if self.clicked_x_pixel and self.clicked_y_pixel:
+            self.viewer.remove_marker(self.clicked_x_pixel, self.clicked_y_pixel)
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
@@ -152,7 +154,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                     image_points.append([x, y])
 
                 csvfile.close()
-            print("saved")
+            self.edit_pix_info.setText(f"Saved to output_csv/{self.image_name}.csv")
             self.image_points = np.array([image_points])
             self.road_points = np.array([road_points])
 
@@ -171,18 +173,18 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 self.viewer.add_marker(n_x, n_y)
                 self.tennis_balls[(r, c)].set_x_y(n_x, n_y)
             else:
-                print("key not found")
+                self.edit_pix_info.setText("Button doesn't have pixel value")
                 return
 
     def calculate_homography(self):
         self.save_balls()
         if self.road_points is not None and self.image_points is not None:
             if self.imu.isChecked():
-                print("IMU calculate_homography")
+                self.edit_pix_info.setText("IMU calculate_homography")
                 print(self.road_points)
                 print(self.image_points)
             elif self.utm.isChecked():
-                print("UTM calculate_homography")
+                self.edit_pix_info.setText("UTM calculate_homography")
                 print(self.road_points)
                 print(self.image_points)
             else:
