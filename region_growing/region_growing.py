@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from point import Point
+from components.point import Point
 
 
 class RegionGrowing:
