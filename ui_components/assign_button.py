@@ -9,8 +9,8 @@ class AssignButton(QPushButton):
     def get_row_column(self):
         return self.row, self.column
 
-    def set_button_selected_status(self):
+    def set_button_status_selected(self):
         self.setStyleSheet("background-color: green")
 
-    def reset_button_status(self):
+    def set_button_status_default(self):
         self.setStyleSheet("background-color: light gray")

@@ -3,6 +3,7 @@ from PySide2.QtGui import QPixmap, Qt
 from PySide2.QtWidgets import QMainWindow, QApplication, QFileDialog, QVBoxLayout, QWidget, QHBoxLayout
 
 from ui_components.assign_button import AssignButton
+from ui_components.delete_button import DeleteButton
 from ui_components.edit_button import EditButton
 from ui_components.edit_position_gui import EditPositionGUI
 from ui_components.photo_viewer import PhotoViewer
@@ -30,7 +31,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.btn_pix_info.clicked.connect(self.pix_info)
         self.edit_pix_info = QtWidgets.QLineEdit(self)
         self.edit_pix_info.setReadOnly(True)
-        self.viewer.photoClicked.connect(self.get_ball_pixel_position)
+        self.viewer.photoClicked.connect(self.on_image_click)
         self.image_holder.addWidget(self.viewer)
         hblayout = QtWidgets.QHBoxLayout()
         hblayout.setAlignment(Qt.AlignLeft)
@@ -40,12 +41,10 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
         self.clicked_x_pixel = None
         self.clicked_y_pixel = None
-        self.temp_x_pixel = None
-        self.temp_y_pixel = None
         self.file_path = None
         self.pixmap = None
         self.tennis_balls = {}
-        self.buttons_list = []
+        self.buttons_list = {}
         self.image_points = None
         self.road_points = None
         self.image_name = ""
@@ -54,14 +53,18 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         for i in range(0, 5):
             for j in range(0, 5):
                 hbox = QHBoxLayout()
-                edit_btn = EditButton("Edit")
+                edit_btn = EditButton()
                 edit_btn.set_row_column(i, j)
                 edit_btn.clicked.connect(self.edit_ball_position)
                 button = AssignButton(f"Row={i}, Col={j}")
                 button.set_row_column(i, j)
-                button.clicked.connect(self.set_ball_coord_position)
+                button.clicked.connect(self.match_pixel_road_points)
+                delete_button = DeleteButton()
+                delete_button.set_row_column(i, j)
+                delete_button.clicked.connect(self.unmatch_pixel_road_points)
                 hbox.addWidget(button)
                 hbox.addWidget(edit_btn)
+                hbox.addWidget(delete_button)
                 self.vbox.addLayout(hbox)
         self.widget.setLayout(self.vbox)
         self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -70,17 +73,17 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.scrollArea.setWidget(self.widget)
 
     def browse_image(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open File', 'c\\')
-        if fname[0]:
-            self.change_image_reset()
-            self.file_path = fname[0]
-            self.image_name = fname[0].split("/")[-1]
+        file_name = QFileDialog.getOpenFileName(self, 'Open File', 'c\\')
+        if file_name[0]:
+            self.image_change_reset()
+            self.file_path = file_name[0]
+            self.image_name = file_name[0].split("/")[-1]
             self.load_image()
 
-    def change_image_reset(self):
+    def image_change_reset(self):
         self.image_points = None
         self.road_points = None
-        self.delete_markers()
+        self.clear_markers()
         self.tennis_balls = {}
         self.reset_buttons_list()
         self.reset_ball_pixel_positions()
@@ -91,51 +94,111 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
     def pix_info(self):
         self.viewer.toggleDragMode()
 
-    def get_ball_pixel_position(self, event):
+    def on_image_click(self, event):
         if self.viewer.dragMode() == QtWidgets.QGraphicsView.NoDrag:
             if self.image_name:
-                self.clicked_x_pixel = event.x()
-                self.clicked_y_pixel = event.y()
-                self.estimate_center()
+                x, y = self.estimate_center(event.x(), event.y())
+                self.remove_temp_marker()
+                self.add_marker(x, y)
+                self.save_estimated_coordinates(x, y)
 
-    def estimate_center(self):
-        img = RegionGrowing(img_path=self.file_path, row=self.clicked_y_pixel, col=self.clicked_x_pixel, thresh=5)
+    def estimate_center(self, x, y):
+        img = RegionGrowing(img_path=self.file_path, row=y, col=x, thresh=5)
         img.region_grow()
-        self.clicked_x_pixel, self.clicked_y_pixel = img.estimate_center()
-        self.edit_pix_info.setText(f"Estimated center: {self.clicked_x_pixel}, {self.clicked_y_pixel}")
-        if self.temp_x_pixel and self.temp_y_pixel:
-            self.viewer.remove_marker(self.temp_x_pixel, self.temp_y_pixel)
-        self.viewer.add_marker(self.clicked_x_pixel, self.clicked_y_pixel)
-        self.temp_x_pixel, self.temp_y_pixel = self.clicked_x_pixel, self.clicked_y_pixel
+        estimated_x, estimated_y = img.estimate_center()
+        self.edit_pix_info.setText(f"Estimated center: {estimated_x}, {estimated_y}")
+        return estimated_x, estimated_y
 
-    def set_ball_coord_position(self):
+    def remove_temp_marker(self):
+        if self.clicked_x_pixel and self.clicked_y_pixel:
+            self.delete_marker(self.clicked_x_pixel, self.clicked_y_pixel)
+
+    def delete_marker(self, x, y):
+        self.viewer.remove_marker(x, y)
+
+    def add_marker(self, x, y):
+        self.viewer.add_marker(x, y)
+
+    def save_estimated_coordinates(self, x, y):
+        self.clicked_x_pixel = x
+        self.clicked_y_pixel = y
+
+    def match_pixel_road_points(self):
         if self.clicked_y_pixel and self.clicked_x_pixel:
             button = self.sender()
             row, column = button.get_row_column()
             if not (row, column) in self.tennis_balls:
-                self.buttons_list.append(button)
+                self.buttons_list[(row, column)] = button
                 tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
                 self.tennis_balls[(row, column)] = tennis_ball
                 self.edit_pix_info.setText(tennis_ball.to_string())
-                button.set_button_selected_status()
+                button.set_button_status_selected()
                 self.reset_ball_pixel_positions()
 
     def reset_buttons_list(self):
         if self.buttons_list:
             for btn in self.buttons_list:
-                btn.reset_button_status()
-        self.buttons_list = []
+                self.buttons_list[btn].set_button_status_default()
+        self.buttons_list = {}
 
     def reset_ball_pixel_positions(self):
-        self.clicked_x_pixel, self.clicked_y_pixel = None, None
-        self.temp_x_pixel, self.temp_y_pixel = None, None
+        self.clicked_x_pixel = None
+        self.clicked_y_pixel = None
+
+    def clear_markers(self):
+        self.delete_markers()
+        self.remove_temp_marker()
 
     def delete_markers(self):
         if self.tennis_balls:
             for key in self.tennis_balls:
-                self.viewer.remove_marker(self.tennis_balls[key].x, self.tennis_balls[key].y)
-        if self.clicked_x_pixel and self.clicked_y_pixel:
-            self.viewer.remove_marker(self.clicked_x_pixel, self.clicked_y_pixel)
+                self.delete_marker(self.tennis_balls[key].x, self.tennis_balls[key].y)
+
+    def unmatch_pixel_road_points(self):
+        if self.tennis_balls:
+            button = self.sender()
+            r, c = button.get_row_column()
+            if (r, c) in self.tennis_balls.keys():
+                x, y = self.tennis_balls[(r, c)].x, self.tennis_balls[(r, c)].y
+                self.delete_marker(x, y)
+                btn = self.buttons_list[(r, c)]
+                btn.set_button_status_default()
+                del self.buttons_list[(r, c)]
+                del self.tennis_balls[(r, c)]
+
+    def edit_ball_position(self):
+        if self.tennis_balls:
+            button = self.sender()
+            r, c = button.get_row_column()
+            if (r, c) in self.tennis_balls.keys():
+                x, y = self.tennis_balls[(r, c)].x, self.tennis_balls[(r, c)].y
+                self.open_edit_dialog(x, y, r, c)
+                n_x, n_y = self.edit_dialog.get_x_y()
+                self.delete_marker(x, y)
+                self.add_marker(n_x, n_y)
+                self.tennis_balls[(r, c)].set_x_y(n_x, n_y)
+            else:
+                self.edit_pix_info.setText("Button doesn't have pixel value")
+                return
+
+    def open_edit_dialog(self, x, y, r, c):
+        self.edit_dialog.set_ball_position(x, y, r, c)
+        self.edit_dialog.show()
+        self.edit_dialog.exec_()
+
+    def calculate_homography(self):
+        self.save_balls()
+        if self.road_points is not None and self.image_points is not None:
+            if self.imu.isChecked():
+                self.edit_pix_info.setText("IMU calculate_homography")
+                print(self.road_points)
+                print(self.image_points)
+            elif self.utm.isChecked():
+                self.edit_pix_info.setText("UTM calculate_homography")
+                print(self.road_points)
+                print(self.image_points)
+            else:
+                pass
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
@@ -152,43 +215,10 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                     writer.writerow([x, y, c, r])
                     road_points.append([c, r])
                     image_points.append([x, y])
-
                 csvfile.close()
             self.edit_pix_info.setText(f"Saved to output_csv/{self.image_name}.csv")
             self.image_points = np.array([image_points])
             self.road_points = np.array([road_points])
-
-    def edit_ball_position(self):
-        if self.tennis_balls:
-            button = self.sender()
-            r, c = button.get_row_column()
-            if (r, c) in self.tennis_balls.keys():
-                x, y = self.tennis_balls[(r, c)].x, self.tennis_balls[(r, c)].y
-                self.edit_dialog.set_ball_position(x, y, r, c)
-                self.edit_dialog.show()
-                self.edit_dialog.exec_()
-                n_x, n_y = self.edit_dialog.get_x_y()
-                p_x, p_y = self.edit_dialog.get_prev_x_y()
-                self.viewer.remove_marker(p_x, p_y)
-                self.viewer.add_marker(n_x, n_y)
-                self.tennis_balls[(r, c)].set_x_y(n_x, n_y)
-            else:
-                self.edit_pix_info.setText("Button doesn't have pixel value")
-                return
-
-    def calculate_homography(self):
-        self.save_balls()
-        if self.road_points is not None and self.image_points is not None:
-            if self.imu.isChecked():
-                self.edit_pix_info.setText("IMU calculate_homography")
-                print(self.road_points)
-                print(self.image_points)
-            elif self.utm.isChecked():
-                self.edit_pix_info.setText("UTM calculate_homography")
-                print(self.road_points)
-                print(self.image_points)
-            else:
-                pass
 
 
 def main():

@@ -9,8 +9,6 @@ class EditPositionGUI(QDialog, Ui_Dialog):
         self.setupUi(self)
         self.x = None
         self.y = None
-        self.prev_x = None
-        self.prev_y = None
         self.r = None
         self.c = None
 
@@ -19,8 +17,6 @@ class EditPositionGUI(QDialog, Ui_Dialog):
         self.y = y
         self.r = r
         self.c = c
-        self.prev_x = x
-        self.prev_y = y
         self.edit_row_value.setText(str(r))
         self.edit_x_value.setText(str(x))
         self.edit_y_value.setText(str(y))
@@ -30,9 +26,6 @@ class EditPositionGUI(QDialog, Ui_Dialog):
 
     def get_x_y(self):
         return self.x, self.y
-
-    def get_prev_x_y(self):
-        return self.prev_x, self.prev_y
 
     def on_save_click(self):
         self.x = float(self.edit_x_value.text())
