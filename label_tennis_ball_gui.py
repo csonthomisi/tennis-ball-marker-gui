@@ -12,6 +12,7 @@ from components.tennis_ball import TennisBall
 from ui.gui import Ui_MainWindow
 import csv
 import numpy as np
+import pandas as pd
 
 
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
@@ -21,9 +22,11 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.widget = QWidget()
         self.vbox = QVBoxLayout()
         self.edit_dialog = EditPositionGUI()
+        self.buttons_list = {}
         self.add_buttons()
         self.select_image_btn.clicked.connect(self.browse_image)
         self.calc_homography_btn.clicked.connect(self.calculate_homography)
+        self.load_btn.clicked.connect(self.load_coordinates)
 
         self.viewer = PhotoViewer(self)
         self.btn_pix_info = QtWidgets.QToolButton(self)
@@ -44,7 +47,6 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.file_path = None
         self.pixmap = None
         self.tennis_balls = {}
-        self.buttons_list = {}
         self.image_points = None
         self.road_points = None
         self.image_name = ""
@@ -59,6 +61,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 button = AssignButton(f"Row={i}, Col={j}")
                 button.set_row_column(i, j)
                 button.clicked.connect(self.match_pixel_road_points)
+                self.buttons_list[(i, j)] = button
                 delete_button = DeleteButton()
                 delete_button.set_row_column(i, j)
                 delete_button.clicked.connect(self.unmatch_pixel_road_points)
@@ -128,18 +131,15 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             button = self.sender()
             row, column = button.get_row_column()
             if not (row, column) in self.tennis_balls:
-                self.buttons_list[(row, column)] = button
-                tennis_ball = TennisBall(x=self.clicked_x_pixel, y=self.clicked_y_pixel, r=row, c=column)
-                self.tennis_balls[(row, column)] = tennis_ball
-                self.edit_pix_info.setText(tennis_ball.to_string())
+                self.add_tennis_ball(self.clicked_x_pixel, self.clicked_y_pixel, row, column)
                 button.set_button_status_selected()
                 self.reset_ball_pixel_positions()
 
     def reset_buttons_list(self):
-        if self.buttons_list:
-            for btn in self.buttons_list:
-                self.buttons_list[btn].set_button_status_default()
-        self.buttons_list = {}
+        for key in self.buttons_list:
+            btn = self.buttons_list[key]
+            if btn.is_selected():
+                btn.set_button_status_default()
 
     def reset_ball_pixel_positions(self):
         self.clicked_x_pixel = None
@@ -161,9 +161,8 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             if (r, c) in self.tennis_balls.keys():
                 x, y = self.tennis_balls[(r, c)].x, self.tennis_balls[(r, c)].y
                 self.delete_marker(x, y)
-                btn = self.buttons_list[(r, c)]
+                btn = self.get_button(r, c)
                 btn.set_button_status_default()
-                del self.buttons_list[(r, c)]
                 del self.tennis_balls[(r, c)]
 
     def edit_ball_position(self):
@@ -186,6 +185,37 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.edit_dialog.show()
         self.edit_dialog.exec_()
 
+    def load_coordinates(self):
+        if self.file_path:
+            file_name = QFileDialog.getOpenFileName(self, 'Open File', 'c\\')
+            if file_name[0]:
+                x_arr, y_arr, r_arr, c_arr, u_arr = self.get_data_from_file(file_name[0])
+                self.road_unit.setValue(u_arr[0])
+                for i in range(len(x_arr)):
+                    self.add_marker(x_arr[i], y_arr[i])
+                    btn = self.get_button(r_arr[i], c_arr[i])
+                    btn.set_button_status_selected()
+                    self.add_tennis_ball(x_arr[i], y_arr[i], r_arr[i], c_arr[i])
+
+    @staticmethod
+    def get_data_from_file(file):
+        data = pd.read_csv(file)
+        x = np.array(data['x'])
+        y = np.array(data['y'])
+        r = np.array(data['row'])
+        c = np.array(data['column'])
+        u = np.array(data['unit'])
+        return x, y, r, c, u
+
+    def get_button(self, r, c):
+        if (r, c) in self.buttons_list.keys():
+            return self.buttons_list[(r, c)]
+
+    def add_tennis_ball(self, x, y, r, c):
+        tb = TennisBall(x=x, y=y, r=r, c=c)
+        self.tennis_balls[(r, c)] = tb
+        self.edit_pix_info.setText(tb.to_string())
+
     def calculate_homography(self):
         self.save_balls()
         if self.road_points is not None and self.image_points is not None:
@@ -204,16 +234,18 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         if len(self.tennis_balls) != 0:
             road_points = []
             image_points = []
+            u = self.road_unit.value()
             with open(f'output_csv/{self.image_name}.csv', 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
-                writer.writerow(['x', 'y', 'row', 'column'])
+                writer.writerow(['x', 'y', 'row', 'column', 'unit'])
                 for ball in self.tennis_balls:
                     x = self.tennis_balls[ball].x
                     y = self.tennis_balls[ball].y
-                    c = self.tennis_balls[ball].c * self.road_unit.value()
-                    r = self.tennis_balls[ball].r * self.road_unit.value()
-                    writer.writerow([x, y, c, r])
-                    road_points.append([c, r])
+                    r = self.tennis_balls[ball].r
+                    c = self.tennis_balls[ball].c
+                    writer.writerow([x, y, r, c, u])
+                    road_points.append([self.tennis_balls[ball].c * self.road_unit.value(),
+                                        self.tennis_balls[ball].r * self.road_unit.value()])
                     image_points.append([x, y])
                 csvfile.close()
             self.edit_pix_info.setText(f"Saved to output_csv/{self.image_name}.csv")
