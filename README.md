@@ -1,5 +1,7 @@
 git clone https://github.com/ask-almas/tennis-ball-marker-gui.git
 
+cd tennis-ball-marker-gui/
+
 python3 -m venv venv
 
 source venv/bin/activate
