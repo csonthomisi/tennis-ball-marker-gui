@@ -69,7 +69,7 @@
       <x>10</x>
       <y>10</y>
       <width>280</width>
-      <height>560</height>
+      <height>520</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -93,7 +93,7 @@
        <x>0</x>
        <y>0</y>
        <width>278</width>
-       <height>558</height>
+       <height>518</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -158,7 +158,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>580</y>
+      <y>540</y>
       <width>280</width>
       <height>30</height>
      </rect>
@@ -209,6 +209,25 @@
      </rect>
     </property>
     <layout class="QVBoxLayout" name="image_holder"/>
+   </widget>
+   <widget class="QPushButton" name="load_btn">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>580</y>
+      <width>280</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="text">
+     <string>Load coordinates</string>
+    </property>
    </widget>
   </widget>
  </widget>
