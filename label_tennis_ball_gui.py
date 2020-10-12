@@ -14,6 +14,23 @@ import csv
 import numpy as np
 import pandas as pd
 
+import cv2
+import glob
+import transforms3d
+
+def pnp(points_3D, points_2D, cameraMatrix, distCoeffs):
+    
+    assert points_2D.shape[0] == points_2D.shape[0], 'points 3D and points 2D must have same number of vertices'
+
+    _, R_exp, t = cv2.solvePnP(points_3D,
+                              # points_2D,
+                              np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
+                              cameraMatrix,
+                              distCoeffs)
+                              # , None, None, False, cv2.SOLVEPNP_UPNP)
+
+    R, _ = cv2.Rodrigues(R_exp)
+    return R, t
 
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -52,7 +69,7 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.image_name = ""
 
     def add_buttons(self):
-        for i in range(0, 5):
+        for i in range(0, 11):
             for j in range(0, 5):
                 hbox = QHBoxLayout()
                 edit_btn = EditButton()
@@ -218,17 +235,17 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     def calculate_homography(self):
         self.save_balls()
-        if self.road_points is not None and self.image_points is not None:
-            if self.imu.isChecked():
-                self.edit_pix_info.setText("IMU calculate_homography")
-                print(self.road_points)
-                print(self.image_points)
-            elif self.utm.isChecked():
-                self.edit_pix_info.setText("UTM calculate_homography")
-                print(self.road_points)
-                print(self.image_points)
-            else:
-                pass
+#        if self.road_points is not None and self.image_points is not None:
+#            if self.imu.isChecked():
+#                self.edit_pix_info.setText("IMU calculate_homography")
+#                print(self.road_points)
+#                print(self.image_points)
+#            elif self.utm.isChecked():
+#                self.edit_pix_info.setText("UTM calculate_homography")
+#                print(self.road_points)
+#                print(self.image_points)
+#            else:
+#                pass
 
     def save_balls(self):
         if len(self.tennis_balls) != 0:
@@ -251,8 +268,104 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.edit_pix_info.setText(f"Saved to output_csv/{self.image_name}.csv")
             self.image_points = np.array([image_points])
             self.road_points = np.array([road_points])
+#            print(image_points)
+#            print("3D points:",road_points)
+            """### Calculate the transformation matrix and save it """
+            if self.utm.isChecked():
+                print("Calculate in UTM\n")
+                # Transform points to UTM
+                fs_tr = cv2.FileStorage("road2utm.xml", cv2.FILE_STORAGE_READ)
+                road2utm = np.array(fs_tr.getNode("road2utm").mat())
+                print("Matrix to UTM\n", road2utm)
+                points=np.hstack((road_points, np.ones((len(road_points),1))))
+                points=np.matmul(road2utm, np.transpose(points)).T
+                points=np.hstack((points, np.zeros((len(points),1))))
+                print("Road points:\n", points)
+                
+            else:
+                points=road_points
+                points=np.hstack((points, np.zeros((len(points),1))))
+                print("Road points:\n", points)
+            pixels=np.array(image_points)
+            points=np.array(points)
+            """### points now in [x,y,z] format"""
+            camera_parameters=glob.glob('Intrinsics/*xml')[0]
+            print("\nCamera calibration file:\n",camera_parameters)
+            fs = cv2.FileStorage(camera_parameters, cv2.FILE_STORAGE_READ)
+            intrinsic=np.array(fs.getNode("intrinsic_matrix").mat())
+#            print(intrinsic)
+            distortion=np.array(fs.getNode("distortion_coeffs").mat())
+#            print(distortion)
+            print('Calculate the transformation matrix "Ball-Cam"')
+            Rot, Trans = pnp(points, pixels, intrinsic, distortion)
+            B2C=np.vstack((np.hstack((Rot, Trans)),[0,0,0,1]))
+            print(B2C)
+            
+            
+            ext=np.loadtxt(glob.glob('Extrinsics/*')[0])
+            R=transforms3d.euler.euler2mat(ext[0], ext[1], ext[2], axes='sxyz')
+            t=ext[3:].reshape((-1,1))
+            # Lidar -> Camera
+            L2C=np.vstack((np.hstack((R,t)),[0,0,0,1]))
+#            print('\nCalculate the transformation matrix "Lidar-Cam"')
+#            print(L2C)
+            # Camera -> Lidar
+            C2L=np.vstack((np.hstack((R.T,np.matmul(-R.T,t))),[0,0,0,1]))
+#            print('\nCalculate the transformation matrix "Cam-Lidar"')
+#            print(C2L)
+            # Balls -> Lidar
+            B2L=np.matmul(C2L, B2C)
+            print('\nCalculate the transformation matrix "Ball-Lidar"')
+            print(B2L)
 
-
+            #Delete later
+            import view_matrix
+            view_matrix.view(points, B2L)
+            ### Until this point seems quite good
+            
+            print('\nCalculate the transformation matrix "Lidar-Ball"')
+            R=B2L[0:3,0:3]
+            t=B2L[:3,3].reshape((-1,1))
+            print(R)
+            print(t)
+            L2B=np.vstack((np.hstack((R.T,np.matmul(-R.T,t))),[0,0,0,1]))
+            print(L2B)
+            if self.utm.isChecked():
+                ### Save the transformation matrix to a defined folder / Transform the [0,0,0] (in Lidar coords) into Balls coordinate system??
+                np.savetxt("Transformation_matrices/B2L_UTM.txt", B2L)
+                np.savetxt("Transformation_matrices/L2B_UTM.txt", L2B)
+                self.edit_pix_info.setText(f"UTM Transformation matrices saved to Transformation_matrices/")
+                print("UTM Matrices saved to Transformation_matrices/")
+                ## Calculate sysorigin in UTM
+#                calc_height=np.loadtxt("Transformation_matrices/B2L.txt")
+#                origin=[0,0,np.abs(calc_height[2,3])] # Itt lehet hogy a magasság is 0 kellene legyen!
+                origin=[0,0,0]
+                print("Lidar Origin point:", origin)
+                origin_transformed=L2B[:3,:3].dot(origin)+L2B[:3,3]
+                print("Lidar Origin transformed:", origin_transformed)
+                rpy=transforms3d.euler.mat2euler(B2L[:3,:3])
+                print("Roll, Pitch, Yaw:",rpy)
+                sysorigin_file=np.hstack((origin_transformed, rpy))
+                np.savetxt('Transformation_matrices/sysorig.txt', sysorigin_file, header='x, y, z, roll, pitch, yaw')
+                
+                '''                lat", ctypes.c_double),
+                ("lon", ctypes.c_double),
+                ("alt", ctypes.c_double),
+                ("yaw", ctypes.c_double),
+                ("pitch", ctypes.c_double),
+                ("roll",'''
+                
+            else:
+                ### Save the transformation matrix to a defined folder / Transform the [0,0,0] (in Lidar coords) into Balls coordinate system??
+                np.savetxt("Transformation_matrices/B2L.txt", B2L)
+                np.savetxt("Transformation_matrices/L2B.txt", L2B)
+                self.edit_pix_info.setText(f"Transformation matrices saved to Transformation_matrices/")
+                print("Matrices saved to Transformation_matrices/")
+        
+        else:
+            print("No points to calculate")
+            self.edit_pix_info.setText(f"No points to calculate")
+        print("End of the script")
 def main():
     app = QApplication()
     window = LabelTennisBallGUI()

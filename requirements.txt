@@ -3,3 +3,7 @@ opencv-python==3.4.10.35
 pandas==1.1.2
 PySide2==5.15.0
 shiboken2==5.15.0
+glob3
+transforms3d
+PyQt5==5.15.1
+mayavi
