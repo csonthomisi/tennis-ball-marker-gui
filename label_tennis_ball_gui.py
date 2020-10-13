@@ -32,6 +32,15 @@ def pnp(points_3D, points_2D, cameraMatrix, distCoeffs):
     R, _ = cv2.Rodrigues(R_exp)
     return R, t
 
+def transform(rotation, translation, point):
+    P=np.array(point)
+    P=P[0:3]
+    points=np.reshape(P,(3,1))
+    rot=np.array(rotation).reshape(3,3)
+    tr=np.array(translation).reshape(3,1)
+    transformed_points=rot.dot(points)+tr
+    return transformed_points
+
 class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
@@ -67,7 +76,9 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.image_points = None
         self.road_points = None
         self.image_name = ""
-
+        
+        
+        self.projection_points=np.empty((1,2))
     def add_buttons(self):
         for i in range(0, 11):
             for j in range(0, 5):
@@ -110,7 +121,14 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
 
     def load_image(self):
         self.viewer.setPhoto(QPixmap(self.file_path))
-
+        # Delete own added markers too
+        if len(self.projection_points)>0:
+            try:
+                self.projection_points=np.array(self.projection_points).reshape((-1,2))
+                for i in range(len(self.projection_points)):
+                    self.delete_marker(self.projection_points[i][0],self.projection_points[i][1] )
+            except:
+                pass
     def pix_info(self):
         self.viewer.toggleDragMode()
 
@@ -203,6 +221,15 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
         self.edit_dialog.exec_()
 
     def load_coordinates(self):
+#        # Delete own added markers too
+#        if len(self.projection_points)>0:
+#            try:
+#                self.projection_points=np.array(self.projection_points).reshape((-1,2))
+#                for i in range(len(self.projection_points)):
+#                    self.delete_marker(self.projection_points[i][0],self.projection_points[i][1] )
+#            except:
+#                pass
+        
         if self.file_path:
             file_name = QFileDialog.getOpenFileName(self, 'Open File', 'c\\')
             if file_name[0]:
@@ -213,7 +240,17 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                     btn = self.get_button(r_arr[i], c_arr[i])
                     btn.set_button_status_selected()
                     self.add_tennis_ball(x_arr[i], y_arr[i], r_arr[i], c_arr[i])
-
+    
+    def load_backproj(self, pixels, utm):
+        x_arr=pixels[:,0]
+        y_arr=pixels[:,1]
+#        print(x_arr)
+#        print(y_arr)
+        for i in range(len(x_arr)):
+            if utm:
+                self.viewer.add_marker_color(x_arr[i], y_arr[i], Qt.red)
+            else:
+                self.viewer.add_marker_color(x_arr[i], y_arr[i], Qt.yellow)
     @staticmethod
     def get_data_from_file(file):
         data = pd.read_csv(file)
@@ -268,8 +305,12 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             self.edit_pix_info.setText(f"Saved to output_csv/{self.image_name}.csv")
             self.image_points = np.array([image_points])
             self.road_points = np.array([road_points])
-#            print(image_points)
-#            print("3D points:",road_points)
+
+            
+            case_avp1=False
+            if self.imu.isChecked():
+                case_avp1=True
+                
             """### Calculate the transformation matrix and save it """
             if self.utm.isChecked():
                 print("Calculate in UTM\n")
@@ -288,8 +329,15 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 print("Road points:\n", points)
             pixels=np.array(image_points)
             points=np.array(points)
+#            
+            
+            
             """### points now in [x,y,z] format"""
-            camera_parameters=glob.glob('Intrinsics/*xml')[0]
+            if case_avp1:
+                camera_parameters=glob.glob('Intrinsics-INF1_AVP1/*xml')[0]
+            else:
+                camera_parameters=glob.glob('Intrinsics-INF2_AVP3/*xml')[0]
+                
             print("\nCamera calibration file:\n",camera_parameters)
             fs = cv2.FileStorage(camera_parameters, cv2.FILE_STORAGE_READ)
             intrinsic=np.array(fs.getNode("intrinsic_matrix").mat())
@@ -301,8 +349,11 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             B2C=np.vstack((np.hstack((Rot, Trans)),[0,0,0,1]))
             print(B2C)
             
-            
-            ext=np.loadtxt(glob.glob('Extrinsics/*')[0])
+            if case_avp1:
+                ext=np.loadtxt(glob.glob('Extrinsics-INF1_AVP1/*')[0])
+            else:
+                ext=np.loadtxt(glob.glob('Extrinsics-INF2_AVP3/*')[0])
+                
             R=transforms3d.euler.euler2mat(ext[0], ext[1], ext[2], axes='sxyz')
             t=ext[3:].reshape((-1,1))
             # Lidar -> Camera
@@ -318,9 +369,21 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             print('\nCalculate the transformation matrix "Ball-Lidar"')
             print(B2L)
 
+            
+
+        
             #Delete later
             import view_matrix
-            view_matrix.view(points, B2L)
+            projected_balls=view_matrix.view(points, B2L, case_avp1)
+            import view_photo
+            projected_pixels=view_photo.project(projected_balls, case_avp1)
+            print("Pixels projected to the image:", projected_pixels)
+            if self.utm.isChecked():
+                self.load_backproj(projected_pixels, True)
+                self.projection_points=np.vstack((self.projection_points,projected_pixels))
+            else:
+                self.load_backproj(projected_pixels, False)
+                self.projection_points=np.vstack((self.projection_points,projected_pixels))
             ### Until this point seems quite good
             
             print('\nCalculate the transformation matrix "Lidar-Ball"')
@@ -332,13 +395,16 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
             print(L2B)
             if self.utm.isChecked():
                 ### Save the transformation matrix to a defined folder / Transform the [0,0,0] (in Lidar coords) into Balls coordinate system??
-                np.savetxt("Transformation_matrices/B2L_UTM.txt", B2L)
-                np.savetxt("Transformation_matrices/L2B_UTM.txt", L2B)
-                self.edit_pix_info.setText(f"UTM Transformation matrices saved to Transformation_matrices/")
+                if case_avp1:
+                    np.savetxt("Transformation_matrices/INF-1_AVP-1_20201006/B2L_UTM.txt", B2L)
+                    np.savetxt("Transformation_matrices/INF-1_AVP-1_20201006/L2B_UTM.txt", L2B)
+                    self.edit_pix_info.setText(f"UTM Transformation matrices saved to Transformation_matrices/INF-1_AVP-1_20201006/")
+                else:
+                    np.savetxt("Transformation_matrices/INF-2_AVP-3_20201006/B2L_UTM.txt", B2L)
+                    np.savetxt("Transformation_matrices/INF-2_AVP-3_20201006/L2B_UTM.txt", L2B)
+                    self.edit_pix_info.setText(f"UTM Transformation matrices saved to Transformation_matrices/INF-2_AVP-3_20201006/")
+                
                 print("UTM Matrices saved to Transformation_matrices/")
-                ## Calculate sysorigin in UTM
-#                calc_height=np.loadtxt("Transformation_matrices/B2L.txt")
-#                origin=[0,0,np.abs(calc_height[2,3])] # Itt lehet hogy a magasság is 0 kellene legyen!
                 origin=[0,0,0]
                 print("Lidar Origin point:", origin)
                 origin_transformed=L2B[:3,:3].dot(origin)+L2B[:3,3]
@@ -346,26 +412,29 @@ class LabelTennisBallGUI(QMainWindow, Ui_MainWindow):
                 rpy=transforms3d.euler.mat2euler(B2L[:3,:3])
                 print("Roll, Pitch, Yaw:",rpy)
                 sysorigin_file=np.hstack((origin_transformed, rpy))
-                np.savetxt('Transformation_matrices/sysorig.txt', sysorigin_file, header='x, y, z, roll, pitch, yaw')
-                
-                '''                lat", ctypes.c_double),
-                ("lon", ctypes.c_double),
-                ("alt", ctypes.c_double),
-                ("yaw", ctypes.c_double),
-                ("pitch", ctypes.c_double),
-                ("roll",'''
-                
+                if case_avp1:
+                    np.savetxt('Transformation_matrices/INF-1_AVP-1_20201006/sysorig.txt', sysorigin_file, header='x, y, z, roll, pitch, yaw')
+                else:
+                    np.savetxt('Transformation_matrices/INF-2_AVP-3_20201006/sysorig.txt', sysorigin_file, header='x, y, z, roll, pitch, yaw')
             else:
                 ### Save the transformation matrix to a defined folder / Transform the [0,0,0] (in Lidar coords) into Balls coordinate system??
-                np.savetxt("Transformation_matrices/B2L.txt", B2L)
-                np.savetxt("Transformation_matrices/L2B.txt", L2B)
-                self.edit_pix_info.setText(f"Transformation matrices saved to Transformation_matrices/")
-                print("Matrices saved to Transformation_matrices/")
+                if case_avp1:
+                    np.savetxt("Transformation_matrices/INF-1_AVP-1_20201006/B2L.txt", B2L)
+                    np.savetxt("Transformation_matrices/INF-1_AVP-1_20201006/L2B.txt", L2B)
+                    self.edit_pix_info.setText(f"Transformation matrices saved to Transformation_matrices/INF-1_AVP-1_20201006/")
+                    print("Matrices saved to Transformation_matrices/INF-1_AVP-1_20201006/")
+                else:
+                    np.savetxt("Transformation_matrices/INF-2_AVP-3_20201006/B2L.txt", B2L)
+                    np.savetxt("Transformation_matrices/INF-2_AVP-3_20201006/L2B.txt", L2B)
+                    self.edit_pix_info.setText(f"Transformation matrices saved to Transformation_matrices/INF-2_AVP-3_20201006/")
+                    print("Matrices saved to Transformation_matrices/INF-2_AVP-3_20201006/")
+        
         
         else:
             print("No points to calculate")
             self.edit_pix_info.setText(f"No points to calculate")
         print("End of the script")
+#        print(np.array(self.projection_points).reshape((-1,2)))
 def main():
     app = QApplication()
     window = LabelTennisBallGUI()

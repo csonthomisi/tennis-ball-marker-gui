@@ -76,11 +76,18 @@ class PhotoViewer(QtWidgets.QGraphicsView):
         self._scene.addLine(x-5, y, x+5, y, pen)
         self._scene.addLine(x, y-5, x, y+5, pen)
 
+    def add_marker_color(self, x, y, color):
+        pen = QPen(color, 1.5)
+        self._scene.addLine(x-5, y, x+5, y, pen)
+        self._scene.addLine(x, y-5, x, y+5, pen)
+        
     def remove_marker(self, x, y):
         transform = QTransform()
-        self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
-        self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
-
+        try:
+            self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
+            self._scene.removeItem(self._scene.itemAt(float(x), float(y), transform))
+        except:
+            pass
     def mousePressEvent(self, event):
         if self._photo.isUnderMouse():
             self.photoClicked.emit(self.mapToScene(event.pos()).toPoint())

@@ -99,10 +99,10 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.calc_homography_btn.setText(QCoreApplication.translate("MainWindow", u"Calculate Homography", None))
+        self.calc_homography_btn.setText(QCoreApplication.translate("MainWindow", u"Calculate Transform", None))
         self.lineEdit.setText(QCoreApplication.translate("MainWindow", u"Road Unit", None))
         self.select_image_btn.setText(QCoreApplication.translate("MainWindow", u"Browse an Image", None))
-        self.imu.setText(QCoreApplication.translate("MainWindow", u"IMU", None))
+        self.imu.setText(QCoreApplication.translate("MainWindow", u"S-1", None))
         self.utm.setText(QCoreApplication.translate("MainWindow", u"UTM", None))
         self.load_btn.setText(QCoreApplication.translate("MainWindow", u"Load coordinates", None))
     # retranslateUi

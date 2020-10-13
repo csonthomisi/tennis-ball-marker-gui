@@ -60,7 +60,7 @@
      </sizepolicy>
     </property>
     <property name="text">
-     <string>Calculate Homography</string>
+     <string>Calculate Transform</string>
     </property>
    </widget>
    <widget class="QScrollArea" name="scrollArea">
